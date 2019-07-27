@@ -11,11 +11,41 @@
                " --frame-parameters='(quote (name . \"~A\"))'"
                " -cne \"(~A)\""))
 
-(defparameter *raise-client*
-  (concatenate 'string
-               "wmctrl -R ~A"
-               " &&"
-               " wmctrl -r ~A -b toggle,maximized_vert,maximized_horz"))
+(defun desktop-geometry ()
+  "Returns the desktop geometry as a string (W H). Assumes all
+workspaces are the same geometry."
+  (mapcar 'parse-integer
+          (cl-ppcre:split
+           "x"
+           (fourth (cl-ppcre:split "\\s+"
+                                   (uiop:run-program "wmctrl -d" :output :string))))))
+
+(defun window-geometry (name)
+  "Returns the current geometry of the given window by name."
+  (let ((results
+         (cl-ppcre:split
+          "\\s+"
+          (uiop:run-program
+           (format nil "wmctrl -lG |grep ~A" name) :output :string))))
+    (mapcar 'parse-integer (list (nth 4 results) (nth 5 results)))))
+
+(defun raise-client (name)
+  "Raises the given window by name."
+  (uiop:run-program (format nil "wmctrl -R ~A" name)))
+
+(defun maximize-client (name)
+  "Maximizes window by name."
+  (uiop:run-program
+   (format nil "wmctrl -r ~A -b toggle,maximized_vert,maximized_horz" name)))
+
+(defun maximize (name)
+  "Will make sure window, selected by name, is maximized. Maximize is
+  a toggle, so try to make sure window is not already maximized."
+  (let ((desktop (desktop-geometry))
+        (window (window-geometry name)))
+    (when (or (> (- (first desktop) (first window)) 70)
+              (> (- (second desktop) (second window)) 70))
+      (maximize-client name))))
 
 (defun window-count (name)
   "Runs wmctrl to check if a given named window exists."
@@ -24,11 +54,18 @@
                  name
                  (uiop:run-program '("wmctrl" "-l") :output :string))))
 
+(defun start-window (name command)
+  "Starts the window with name and command, waits a maximum of 5
+  seconds for window to open for window to open."
+  (uiop:run-program (format nil *start-client* *socket-path* name command))
+  (loop for n from 0 below 5
+     until (plusp (window-count name))))
+
 (defun run (name command)
-  (let ((startup)))
   (when (zerop (window-count name))
-    (uiop:run-program (format nil *start-client* *socket-path* name command)))
-  (uiop:launch-program (format nil *raise-client* name name)))
+    (start-window name command))
+  (raise-client name)
+  (maximize name))
 
 (defun -main ()
   (run "Eshell" "eshell"))
