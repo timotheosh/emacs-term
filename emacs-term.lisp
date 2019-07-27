@@ -1,5 +1,8 @@
 ;;;; emacs-term.lisp
-
+;; This program depends on wmctrl to be on the path
+;; You can install it on Ubuntu/Debian with:
+;;   sudo apt install wmctrl
+;;
 (in-package #:emacs-term)
 
 (defparameter *socket-path* "/home/thawes/.emacs.d/server/server")
