@@ -32,10 +32,6 @@ workspaces are the same geometry."
            (format nil "wmctrl -lG |grep ~A" name) :output :string))))
     (mapcar 'parse-integer (list (nth 4 results) (nth 5 results)))))
 
-(defun raise-client (name)
-  "Raises the given window by name."
-  (uiop:run-program (format nil "wmctrl -R ~A" name)))
-
 (defun maximize-client (name)
   "Maximizes window by name."
   (uiop:run-program
@@ -64,11 +60,30 @@ workspaces are the same geometry."
   (loop for n from 0 below 5
      until (plusp (window-count name))))
 
+(defun active-window ()
+  "Returns the ID of the active window"
+  (multiple-value-bind (name err status)
+      (uiop:run-program
+       '("xdotool" "getactivewindow" "getwindowname") :output :string)
+    (string-trim '(#\Space #\Tab #\Newline) name)))
+
+(defun eshell-active-p (name)
+  (string-equal name (active-window)))
+
+(defun kill-window (name)
+  (uiop:run-program (format nil "wmctrl -c ~A" name)))
+
+(defun raise-client (name)
+  "Raises the given window by name."
+  (uiop:run-program (format nil "wmctrl -R ~A" name)))
+
 (defun run (name command)
-  (when (zerop (window-count name))
-    (start-window name command))
-  (raise-client name)
-  (maximize name))
+  (if (eshell-active-p name)
+      (kill-window name)
+      (progn(when (zerop (window-count name))
+              (start-window name command))
+            (raise-client name)
+            (maximize name))))
 
 (defun -main ()
   (run "Eshell" "eshell"))
