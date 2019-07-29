@@ -57,8 +57,9 @@ workspaces are the same geometry."
   "Starts the window with name and command, waits a maximum of 5
   seconds for window to open for window to open."
   (uiop:run-program (format nil *start-client* *socket-path* name command))
-  (loop for n from 0 below 5
-     until (plusp (window-count name))))
+  (loop for n from 0 below 20
+     until (plusp (window-count name)) do
+       (sleep 0.25)))
 
 (defun active-window ()
   "Returns the ID of the active window"
