@@ -21,7 +21,8 @@ workspaces are the same geometry."
           (cl-ppcre:split
            "x"
            (fourth (cl-ppcre:split "\\s+"
-                                   (uiop:run-program "wmctrl -d" :output :string))))))
+                                   (uiop:run-program "wmctrl -d" :output :string
+                                                     :ignore-error-status t))))))
 
 (defun window-geometry (name)
   "Returns the current geometry of the given window by name."
@@ -29,13 +30,15 @@ workspaces are the same geometry."
          (cl-ppcre:split
           "\\s+"
           (uiop:run-program
-           (format nil "wmctrl -lG |grep ~A" name) :output :string))))
+           (format nil "wmctrl -lG |grep ~A" name) :output :string
+           :ignore-error-status t))))
     (mapcar 'parse-integer (list (nth 4 results) (nth 5 results)))))
 
 (defun maximize-client (name)
   "Maximizes window by name."
   (uiop:run-program
-   (format nil "wmctrl -r ~A -b toggle,maximized_vert,maximized_horz" name)))
+   (format nil "wmctrl -r ~A -b toggle,maximized_vert,maximized_horz" name)
+   :ignore-error-status t))
 
 (defun maximize (name)
   "Will make sure window, selected by name, is maximized. Maximize is
@@ -51,12 +54,14 @@ workspaces are the same geometry."
   (count-if-not 'null
                 (cl-ppcre:all-matches-as-strings
                  name
-                 (uiop:run-program '("wmctrl" "-l") :output :string))))
+                 (uiop:run-program '("wmctrl" "-l") :output :string
+                                   :ignore-error-status t))))
 
 (defun start-window (name command)
   "Starts the window with name and command, waits a maximum of 5
   seconds for window to open for window to open."
-  (uiop:run-program (format nil *start-client* *socket-path* name command))
+  (uiop:run-program (format nil *start-client* *socket-path* name command)
+                    :ignore-error-status t)
   (loop for n from 0 below 20
      until (plusp (window-count name)) do
        (sleep 0.25)))
@@ -65,18 +70,20 @@ workspaces are the same geometry."
   "Returns the ID of the active window"
   (multiple-value-bind (name err status)
       (uiop:run-program
-       '("xdotool" "getactivewindow" "getwindowname") :output :string)
+       '("xdotool" "getactivewindow" "getwindowname")
+       :output :string :ignore-error-status t)
     (string-trim '(#\Space #\Tab #\Newline) name)))
 
 (defun eshell-active-p (name)
   (string-equal name (active-window)))
 
 (defun kill-window (name)
-  (uiop:run-program (format nil "wmctrl -c ~A" name)))
+  (uiop:run-program (format nil "wmctrl -c ~A" name)
+                    :ignore-error-status t))
 
 (defun raise-client (name)
   "Raises the given window by name."
-  (uiop:run-program (format nil "wmctrl -R ~A" name)))
+  (uiop:run-program (format nil "wmctrl -R ~A" name) :ignore-error-status t))
 
 (defun run (name command)
   (if (eshell-active-p name)
