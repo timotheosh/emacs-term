@@ -5,6 +5,9 @@
 ;;
 (in-package #:emacs-term)
 
+(defparameter *memoized-functions*
+  '(get-window-id desktop-geometry window-geometry active-window))
+
 (defparameter *socket-path* "/home/thawes/.emacs.d/server/server")
 
 (defparameter *start-client*
@@ -14,25 +17,40 @@
                " --frame-parameters='(quote (name . \"~A\"))'"
                " -cne \"(~A)\""))
 
+(defun trim-all (str)
+  (string-trim '(#\Space #\Newline #\Backspace #\Tab
+                 #\Linefeed #\Page #\Return #\Rubout)
+               str))
+
+(defun get-window-id (window-name)
+  (multiple-value-bind (window-id stderr status)
+      (uiop:run-program (format nil "xdotool search --classname ~A" window-name)
+                        :output :string
+                        :ignore-error-status t)
+    (let ((id (trim-all window-id)))
+      (if (zerop (length id))
+          nil
+          (first (cl-ppcre:split "\\s+" id))))))
+
 (defun desktop-geometry ()
   "Returns the desktop geometry as a string (W H). Assumes all
 workspaces are the same geometry."
-  (mapcar 'parse-integer
-          (cl-ppcre:split
-           "x"
-           (fourth (cl-ppcre:split "\\s+"
-                                   (uiop:run-program "wmctrl -d" :output :string
-                                                     :ignore-error-status t))))))
+  (multiple-value-bind (geom stderr status)
+      (uiop:run-program '("xdotool" "getdisplaygeometry") :output :string
+                        :ignore-error-status t)
+    (mapcar 'parse-integer (cl-ppcre:split "\\s+" (trim-all geom)))))
 
 (defun window-geometry (name)
   "Returns the current geometry of the given window by name."
-  (let ((results
-         (cl-ppcre:split
-          "\\s+"
-          (uiop:run-program
-           (format nil "wmctrl -lG |grep ~A" name) :output :string
-           :ignore-error-status t))))
-    (mapcar 'parse-integer (list (nth 4 results) (nth 5 results)))))
+  (multiple-value-bind (line backref)
+      (multiple-value-bind (results stderr status)
+          (uiop:run-program (format nil "xdotool getwindowgeometry ~A"
+                                    (get-window-id name))
+                            :output :string :ignore-error-status t)
+        (cl-ppcre:scan-to-strings "Geometry: ([0-9]*x?[0-9]*)"
+                                  (trim-all results)))
+    (mapcar 'parse-integer
+            (cl-ppcre:split "x" (elt backref 0)))))
 
 (defun maximize-client (name)
   "Maximizes window by name."
@@ -40,22 +58,18 @@ workspaces are the same geometry."
    (format nil "wmctrl -r ~A -b toggle,maximized_vert,maximized_horz" name)
    :ignore-error-status t))
 
+(defun maximized-p (name)
+  "Returns true if client is already maximized."
+  (let ((desktop (desktop-geometry))
+        (window (window-geometry name)))
+    (and (< (- (first desktop) (first window)) 80)
+         (< (- (second desktop) (second window)) 80))))
+
 (defun maximize (name)
   "Will make sure window, selected by name, is maximized. Maximize is
   a toggle, so try to make sure window is not already maximized."
-  (let ((desktop (desktop-geometry))
-        (window (window-geometry name)))
-    (when (or (> (- (first desktop) (first window)) 70)
-              (> (- (second desktop) (second window)) 70))
-      (maximize-client name))))
-
-(defun window-count (name)
-  "Runs wmctrl to check if a given named window exists."
-  (count-if-not 'null
-                (cl-ppcre:all-matches-as-strings
-                 name
-                 (uiop:run-program '("wmctrl" "-l") :output :string
-                                   :ignore-error-status t))))
+  (when (null (maximized-p name))
+    (maximize-client name)))
 
 (defun start-window (name command)
   "Starts the window with name and command, waits a maximum of 5
@@ -63,7 +77,7 @@ workspaces are the same geometry."
   (uiop:run-program (format nil *start-client* *socket-path* name command)
                     :ignore-error-status t)
   (loop for n from 0 below 20
-     until (plusp (window-count name)) do
+     until (plusp (length (get-window-id name))) do
        (sleep 0.25)))
 
 (defun active-window ()
@@ -74,24 +88,39 @@ workspaces are the same geometry."
        :output :string :ignore-error-status t)
     (string-trim '(#\Space #\Tab #\Newline) name)))
 
-(defun eshell-active-p (name)
+(defun window-active-p (name)
   (string-equal name (active-window)))
 
 (defun kill-window (name)
-  (uiop:run-program (format nil "wmctrl -c ~A" name)
-                    :ignore-error-status t))
+  (multiple-value-bind (stdout stderr status)
+      (uiop:run-program (format nil "wmctrl -c ~A" name)
+                        :ignore-error-status t)
+    (zerop status)))
 
 (defun raise-client (name)
   "Raises the given window by name."
-  (uiop:run-program (format nil "wmctrl -R ~A" name) :ignore-error-status t))
+  (multiple-value-bind (stdout stderr status)
+      (uiop:run-program (format nil "wmctrl -R ~A" name) :ignore-error-status t)
+    (zerop status)))
 
 (defun run (name command)
-  (if (eshell-active-p name)
-      (kill-window name)
-      (progn(when (zerop (window-count name))
-              (start-window name command))
-            (raise-client name)
-            (maximize name))))
+  (if (window-active-p name)
+      (if (maximized-p name)
+          (kill-window name)
+          (maximize name))
+      (progn
+        (when  (null (get-window-id name))
+          (start-window name command))
+        (raise-client name)
+        (maximize name))))
+
+(defun our/memoize-functions ()
+  (mapcar 'memoize-function *memoized-functions*))
+
+(defun our/unmemoize-functions ()
+  (mapcar 'unmemoize-functions *memoized-functions*))
 
 (defun -main ()
-  (run "Eshell" "eshell"))
+  (let ((name "Eshell")
+        (command "eshell"))
+    (run name command)))
