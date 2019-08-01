@@ -5,9 +5,6 @@
 ;;
 (in-package #:emacs-term)
 
-(defparameter *memoized-functions*
-  '(get-window-id desktop-geometry window-geometry active-window))
-
 (defparameter *socket-path* "/home/thawes/.emacs.d/server/server")
 
 (defparameter *start-client*
@@ -55,7 +52,7 @@ workspaces are the same geometry."
 (defun maximize-client (name)
   "Maximizes window by name."
   (uiop:run-program
-   (format nil "wmctrl -r ~A -b toggle,maximized_vert,maximized_horz" name)
+   (format nil "wmctrl -xr ~A -b toggle,maximized_vert,maximized_horz" name)
    :ignore-error-status t))
 
 (defun maximized-p (name)
@@ -93,15 +90,17 @@ workspaces are the same geometry."
 
 (defun kill-window (name)
   (multiple-value-bind (stdout stderr status)
-      (uiop:run-program (format nil "wmctrl -c ~A" name)
+      (uiop:run-program (format nil "wmctrl -xc ~A" name)
                         :ignore-error-status t)
     (zerop status)))
 
 (defun raise-client (name)
   "Raises the given window by name."
-  (multiple-value-bind (stdout stderr status)
-      (uiop:run-program (format nil "wmctrl -R ~A" name) :ignore-error-status t)
-    (zerop status)))
+  (uiop:run-program
+   (format nil "wmctrl -xR ~A" name) :ignore-error-status t)
+  (loop for n from 0 below 20
+     until (not (null (window-active-p name))) do
+       (sleep 0.25)))
 
 (defun run (name command)
   (if (window-active-p name)
@@ -113,12 +112,6 @@ workspaces are the same geometry."
           (start-window name command))
         (raise-client name)
         (maximize name))))
-
-(defun our/memoize-functions ()
-  (mapcar 'memoize-function *memoized-functions*))
-
-(defun our/unmemoize-functions ()
-  (mapcar 'unmemoize-functions *memoized-functions*))
 
 (defun -main ()
   (let ((name "Eshell")
