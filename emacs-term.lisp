@@ -1,7 +1,7 @@
 ;;;; emacs-term.lisp
-;; This program depends on wmctrl to be on the path
+;; This program depends on wmctrl and xdotool to be on the path
 ;; You can install it on Ubuntu/Debian with:
-;;   sudo apt install wmctrl
+;;   sudo apt install wmctrl xdootool
 ;;
 (in-package #:emacs-term)
 
@@ -12,7 +12,7 @@
                "emacsclient"
                " --socket-name=~A"
                " --frame-parameters='(quote (name . \"~A\"))'"
-               " -cne \"(~A)\""))
+               " -cne '(~A)'"))
 
 (defun trim-all (str)
   (string-trim '(#\Space #\Newline #\Backspace #\Tab
@@ -68,6 +68,9 @@ workspaces are the same geometry."
   (when (null (maximized-p name))
     (maximize-client name)))
 
+(defun start-term (name command)
+  )
+
 (defun start-window (name command)
   "Starts the window with name and command, waits a maximum of 5
   seconds for window to open for window to open."
@@ -113,7 +116,8 @@ workspaces are the same geometry."
         (raise-client name)
         (maximize name))))
 
-(defun -main ()
-  (let ((name "Eshell")
-        (command "eshell"))
-    (run name command)))
+(defun -main (&rest args)
+  (let ((cmd (parse-args args)))
+    (let ((name (first cmd))
+          (command (second cmd)))
+      (run name command))))

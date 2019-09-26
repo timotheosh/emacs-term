@@ -2,4 +2,4 @@
 
 (defpackage #:emacs-term
   (:use #:cl)
-  (:export :-main))
+  (:export :-main :parse-args))
