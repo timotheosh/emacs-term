@@ -59,17 +59,14 @@ workspaces are the same geometry."
   "Returns true if client is already maximized."
   (let ((desktop (desktop-geometry))
         (window (window-geometry name)))
-    (and (< (- (first desktop) (first window)) 80)
-         (< (- (second desktop) (second window)) 80))))
+    (and (< (- (first desktop) (first window)) 120)
+         (< (- (second desktop) (second window)) 120))))
 
 (defun maximize (name)
   "Will make sure window, selected by name, is maximized. Maximize is
   a toggle, so try to make sure window is not already maximized."
   (when (null (maximized-p name))
     (maximize-client name)))
-
-(defun start-term (name command)
-  )
 
 (defun start-window (name command)
   "Starts the window with name and command, waits a maximum of 5
