@@ -50,5 +50,5 @@
                      ((equal cmd "eshell")  '("Eshell" "eshell"))
                      ((equal cmd "org-agenda") '("Agenda" "org-agenda-list"))
                      ((equal cmd "org-todos") '("Todos" "org-todo-list"))
-                     ((equal cmd "multi-term") '("Multi-Term" "multi-term"))
+                     ((equal cmd "multi-term") '("Multi-Term" "multi-term-next"))
                      (t '("Emacs" "")))))))
