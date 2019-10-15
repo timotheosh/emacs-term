@@ -40,14 +40,15 @@
     ;; Here all options are checked independently, it's trivial to code any
     ;; logic to process them.
     (when-option (options :help)
-      (opts:describe
-       :prefix (format nil "emacs-term allows you to run emacs frames in an XWindow environment with some~% help from wmctrl, and xdootool")
-       :usage-of "emacs-term")
-      (opts:exit 1))
+                 (opts:describe
+                  :prefix (format nil "emacs-term allows you to run emacs frames in an XWindow environment with some~% help from wmctrl, and xdootool")
+                  :usage-of "emacs-term")
+                 (opts:exit 1))
     (when-option (options :command)
-      (let ((cmd (getf options :command)))
-        (cond
-          ((equal cmd "eshell")  '("Eshell" "eshell"))
-          ((equal cmd "org-agenda") '("Agenda" "org-agenda-list"))
-          ((equal cmd "org-todos") '("Todos" "org-todo-list"))
-          (t '("Emacs" "")))))))
+                 (let ((cmd (getf options :command)))
+                   (cond
+                     ((equal cmd "eshell")  '("Eshell" "eshell"))
+                     ((equal cmd "org-agenda") '("Agenda" "org-agenda-list"))
+                     ((equal cmd "org-todos") '("Todos" "org-todo-list"))
+                     ((equal cmd "multi-term") '("Multi-Term" "multi-term"))
+                     (t '("Emacs" "")))))))
