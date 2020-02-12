@@ -51,4 +51,5 @@
                      ((equal cmd "org-agenda") '("Agenda" "org-agenda-list"))
                      ((equal cmd "org-todos") '("Todos" "org-todo-list"))
                      ((equal cmd "multi-term") '("Multi-Term" "multi-term-next"))
+                     ((equal cmd "buffer-menu") '("Pushbutton-Emacs" "ibuffer"))
                      (t '("Emacs" "")))))))
