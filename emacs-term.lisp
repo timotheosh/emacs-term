@@ -1,4 +1,4 @@
-;;;; emacs-term.lisp
+;;;; -term.lisp
 ;; This program depends on wmctrl and xdotool to be on the path
 ;; You can install it on Ubuntu/Debian with:
 ;;   sudo apt install wmctrl xdootool
@@ -55,6 +55,13 @@ workspaces are the same geometry."
    (format nil "wmctrl -xr ~A -b toggle,maximized_vert,maximized_horz" name)
    :ignore-error-status t))
 
+(defun minimize (name)
+  "Minimizes window by name"
+  (let ((window-id (get-window-id name)))
+    (uiop:run-program
+     (format nil "xdotool windowminimize ~A" window-id)
+     :ignore-error-status t)))
+
 (defun maximized-p (name)
   "Returns true if client is already maximized."
   (let ((desktop (desktop-geometry))
@@ -76,6 +83,10 @@ workspaces are the same geometry."
   (loop for n from 0 below 20
      until (plusp (length (get-window-id name))) do
        (sleep 0.25)))
+
+(defun skip-taskbar (name)
+  (uiop:run-program (format nil "wmctrl -xr ~A -b toggle,skip_taskbar" name)
+                    :ignore-error-status t))
 
 (defun active-window ()
   "Returns the ID of the active window"
@@ -105,11 +116,12 @@ workspaces are the same geometry."
 (defun run (name command)
   (if (window-active-p name)
       (if (maximized-p name)
-          (kill-window name)
+          (minimize name)
           (maximize name))
       (progn
         (when  (null (get-window-id name))
-          (start-window name command))
+          (start-window name command)
+          (skip-taskbar name))
         (raise-client name)
         (maximize name))))
 
