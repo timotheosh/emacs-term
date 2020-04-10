@@ -113,7 +113,7 @@ workspaces are the same geometry."
      until (not (null (window-active-p name))) do
        (sleep 0.25)))
 
-(defun run (name command)
+(defun run (name command &optional (hide nil))
   (if (window-active-p name)
       (if (maximized-p name)
           (minimize name)
@@ -121,12 +121,14 @@ workspaces are the same geometry."
       (progn
         (when  (null (get-window-id name))
           (start-window name command)
-          (skip-taskbar name))
+          (when hide
+            (skip-taskbar name)))
         (raise-client name)
         (maximize name))))
 
 (defun -main (&rest args)
   (let ((cmd (parse-args args)))
     (let ((name (first cmd))
-          (command (second cmd)))
-      (run name command))))
+          (command (second cmd))
+          (hide (third cmd)))
+      (run name command hide))))
