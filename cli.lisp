@@ -4,6 +4,8 @@
 
 (defparameter *commands* '("eshell" "org-agenda" "org-todos" "multi-term" "buffer-menu"))
 
+(defvar *default-name* "Emacs-Term")
+
 (opts:define-opts
   (:name :help
          :description "print this help text"
@@ -33,11 +35,11 @@
 (defun set-command (options)
   (let ((cmd (getf options :command)))
     (cond
-      ((equal cmd "eshell")  '("Eshell" "eshell" t))
-      ((equal cmd "org-agenda") '("Agenda" "org-agenda-list"))
-      ((equal cmd "org-todos") '("Todos" "org-todo-list"))
-      ((equal cmd "multi-term") '("Multi-Term" "multi-term-next"))
-      ((equal cmd "buffer-menu") '("Emacs-Term" "ibuffer"))
+      ((equal cmd "eshell")  (list *default-name* "eshell" t))
+      ((equal cmd "org-agenda") (lsit "Agenda" "org-agenda-list"))
+      ((equal cmd "org-todos") (list "Todos" "org-todo-list"))
+      ((equal cmd "multi-term") (list *default-name* "multi-term-next"))
+      ((equal cmd "buffer-menu") (list *default-name* "ibuffer"))
       (t '("Emacs-Term" "display-about-screen")))))
 
 (defun parse-args (&rest args)

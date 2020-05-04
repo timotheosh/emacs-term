@@ -12,7 +12,7 @@
                "emacsclient"
                " --socket-name=~A"
                " --frame-parameters='(quote (name . \"~A\"))'"
-               " -cne '(~A)'"))
+               " ~A '(~A)'"))
 
 (defun trim-all (str)
   (string-trim '(#\Space #\Newline #\Backspace #\Tab
@@ -75,11 +75,16 @@ workspaces are the same geometry."
   (when (null (maximized-p name))
     (maximize-client name)))
 
+(defun how-start-client (name command)
+  (let ((param (if (string= name *default-name*) "-ne" "-cne")))
+    (format nil *start-client* *socket-path* name param command)))
+
 (defun start-window (name command)
   "Starts the window with name and command, waits a maximum of 5
   seconds for window to open for window to open."
-  (uiop:run-program (format nil *start-client* *socket-path* name command)
+  (uiop:run-program (how-start-client name command)
                     :ignore-error-status t)
+
   (loop for n from 0 below 20
      until (plusp (length (get-window-id name))) do
        (sleep 0.25)))
