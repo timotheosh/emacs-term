@@ -1,11 +1,11 @@
 ;;;; -term.lisp
-;; This program depends on wmctrl and xdotool to be on the path
+;; This program depends on wmctrl, xdotool, and xprop to be on the path
 ;; You can install it on Ubuntu/Debian with:
-;;   sudo apt install wmctrl xdootool
+;;   sudo apt install wmctrl xdootool x11-tools
 ;;
 (in-package #:emacs-term)
 
-(defparameter *socket-path* "/home/thawes/.emacs.d/server/server")
+(defparameter *socket-path* "emacs1")
 
 (defparameter *start-client*
   (concatenate 'string
@@ -22,6 +22,16 @@
 (defun get-window-id (window-name)
   (multiple-value-bind (window-id stderr status)
       (uiop:run-program (format nil "xdotool search --classname ~A" window-name)
+                        :output :string
+                        :ignore-error-status t)
+    (let ((id (trim-all window-id)))
+      (if (zerop (length id))
+          nil
+          (first (cl-ppcre:split "\\s+" id))))))
+
+(defun get-window-id-by-name (window-name)
+  (multiple-value-bind (window-id stderr status)
+      (uiop:run-program (format nil "xdotool search --name ~A" window-name)
                         :output :string
                         :ignore-error-status t)
     (let ((id (trim-all window-id)))
@@ -81,8 +91,10 @@ workspaces are the same geometry."
   (uiop:run-program (format nil *start-client* *socket-path* name command)
                     :ignore-error-status t)
   (loop for n from 0 below 20
-     until (plusp (length (get-window-id name))) do
-       (sleep 0.25)))
+     until (plusp (length (get-window-id-by-name name))) do
+       (sleep 0.25))
+  (multiple-value-bind (in out rv)
+      (uiop:run-program (format nil "xprop -name ~A -f WM_CLASS 8s -set WM_CLASS \"~A\"" name name)) (when (zerop rv) t)))
 
 (defun skip-taskbar (name)
   (uiop:run-program (format nil "wmctrl -xr ~A -b toggle,skip_taskbar" name)
