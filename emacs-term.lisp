@@ -76,8 +76,8 @@ workspaces are the same geometry."
   "Returns true if client is already maximized."
   (let ((desktop (desktop-geometry))
         (window (window-geometry name)))
-    (and (< (- (first desktop) (first window)) 120)
-         (< (- (second desktop) (second window)) 120))))
+    (and (< (* (first desktop) 0.87) (first window))
+         (< (* (second desktop) 0.87) (second window)))))
 
 (defun maximize (name)
   "Will make sure window, selected by name, is maximized. Maximize is
@@ -144,3 +144,4 @@ workspaces are the same geometry."
           (command (second cmd))
           (hide (third cmd)))
       (run name command hide))))
+
