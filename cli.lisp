@@ -4,6 +4,8 @@
 
 (defparameter *commands* '("eshell" "org-agenda" "org-todos" "multi-term" "buffer-menu"))
 
+(defparameter *w-name* (format nil "~A@~A" (uiop:getenv "USER") (uiop:hostname)))
+
 (opts:define-opts
   (:name :help
          :description "print this help text"
@@ -33,11 +35,12 @@
 (defun set-command (options)
   (let ((cmd (getf options :command)))
     (cond
-      ((equal cmd "eshell")  '("Eshell" "eshell" t))
-      ((equal cmd "org-agenda") '("Agenda" "org-agenda-list"))
-      ((equal cmd "org-todos") '("Todos" "org-todo-list"))
-      ((equal cmd "multi-term") '("Multi-Term" "multi-term-next"))
-      ((equal cmd "buffer-menu") '("Emacs-Term" "ibuffer"))
+      ((equal cmd "eshell")  (list "Eshell" "eshell" t))
+      ((equal cmd "org-agenda") (list "Agenda" "org-agenda-list"))
+      ((equal cmd "org-todos") (list "Todos" "org-todo-list"))
+      ((equal cmd "multi-term") (list "Terminal" "multi-vterm-next"))
+      ((equal cmd "buffer-menu") (list *w-name* "ibuffer"))
+      ((equal cmd "dashboard") (list *w-name* "doom-dashboard/open"))
       (t '("Emacs-Term" "display-about-screen")))))
 
 (defun parse-args (&rest args)
