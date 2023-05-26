@@ -1,0 +1,22 @@
+#|-*- mode:lisp -*-|#
+(in-package :cl-user)
+(defpackage :lake.user
+  (:use :cl :lake :cl-syntax)
+  (:shadowing-import-from :lake
+                          :directory))
+(in-package :lake.user)
+
+(use-syntax :interpol)
+
+(defparameter system "emacs-term")
+
+(task "clean" ()
+      (sh "rm -rf target/"))
+
+(task "default" ("emacs-term.asd" "src/main.lisp")
+      (lake :target "clean")
+      (format t "Compiling system to target/~A~%" system)
+      (asdf:make :emacs-term))
+
+(task "test" ("emacs-term.asd" "src/main.lisp")
+      (asdf:test-system :emacs-term))
