@@ -3,6 +3,10 @@
 ;; You can install it on Ubuntu/Debian with:
 ;;   sudo apt install wmctrl xdootool x11-tools
 ;;
+(defpackage #:emacs-term
+  (:use #:cl)
+  (:export :-main :parse-args))
+
 (in-package #:emacs-term)
 
 (defparameter *socket-path* "emacs1")
