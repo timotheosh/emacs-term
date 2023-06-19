@@ -9,8 +9,6 @@
 
 (in-package #:emacs-term)
 
-(defparameter *socket-path* "emacs1")
-
 (defparameter *start-client*
   (concatenate 'string
                "emacsclient"

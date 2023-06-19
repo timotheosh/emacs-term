@@ -6,23 +6,31 @@
 
 (defparameter *w-name* (format nil "~A@~A" (uiop:getenv "USER") (uiop:hostname)))
 
+(defparameter *socket-path* "server")
+
 (opts:define-opts
   (:name :help
-         :description "print this help text"
-         :short #\h
-         :long "help")
+   :description "print this help text"
+   :short #\h
+   :long "help")
   (:name :dired
-         :description "Start a dired session within a running emacs."
-         :short #\d
-         :long "dired"
-         :arg-parser #'identity
-         :meta-var "PATH")
+   :description "Start a dired session within a running emacs."
+   :short #\d
+   :long "dired"
+   :arg-parser #'identity
+   :meta-var "PATH")
   (:name :command
-         :description (format nil "Commands being one of ~{~A ~}~%" *commands*)
-         :short #\c
-         :long "command"
-         :arg-parser #'identity
-         :meta-var "COMMAND"))
+   :description (format nil "Commands being one of ~{~A ~}~%" *commands*)
+   :short #\c
+   :long "command"
+   :arg-parser #'identity
+   :meta-var "COMMAND")
+  (:name :socket
+   :description (format nil "name of or full path to the emacs daemon socket file.")
+   :short #\s
+   :long "socket"
+   :arg-parser #'identity
+   :meta-var "SOCKET"))
 
 (defun unknown-option (condition)
   (format t "warning: ~s option is unknown!~%" (opts:option condition))
@@ -56,6 +64,7 @@
           (format t "fatal: cannot parse ~s as argument of ~s~%"
                   (opts:raw-arg condition)
                   (opts:option condition))))
+    (setf *socket-path* (or (getf options :socket) "server"))
     ;; Here all options are checked independently, it's trivial to code any
     ;; logic to process them.
     (cond ((getf options :help) (progn (opts:describe
