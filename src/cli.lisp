@@ -53,6 +53,7 @@
       (t '("Emacs-Term" "display-about-screen")))))
 
 (defun parse-args (&rest args)
+  (declare (ignore args))
   (multiple-value-bind (options args)
       (handler-case
           (handler-bind ((opts:unknown-option #'unknown-option))
@@ -64,6 +65,7 @@
           (format t "fatal: cannot parse ~s as argument of ~s~%"
                   (opts:raw-arg condition)
                   (opts:option condition))))
+    (declare (ignore args))
     (setf *socket-path* (or (getf options :socket) "server"))
     ;; Here all options are checked independently, it's trivial to code any
     ;; logic to process them.
