@@ -49,7 +49,7 @@
       ((equal cmd "multi-term") (list "Terminal" "multi-term-next"))
       ((equal cmd "multi-vterm") (list "Terminal" "multi-vterm"))
       ((equal cmd "buffer-menu") (list *w-name* "ibuffer"))
-      ((equal cmd "dashboard") (list *w-name* "+doom-dashboard/open (selected-frame)"))
+      ((equal cmd "dashboard") (list *w-name* "+dashboard/open (selected-frame)"))
       (t '("Emacs-Term" "display-about-screen")))))
 
 (defun parse-args (&rest args)

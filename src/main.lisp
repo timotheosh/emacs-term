@@ -31,15 +31,17 @@
           nil
           (first (cl-ppcre:split "\\s+" id))))))
 
-(defun get-window-id-by-name (window-name)
-  (multiple-value-bind (window-id stderr status)
-      (uiop:run-program (format nil "xdotool search --name ~A" window-name)
+(defun window-ids-with-class (class-name)
+  "Returns the list of ids of all windows currently matching
+  class-name in WM_CLASS."
+  (multiple-value-bind (output stderr status)
+      (uiop:run-program (format nil "xdotool search --classname ~A" class-name)
                         :output :string
                         :ignore-error-status t)
-    (let ((id (trim-all window-id)))
-      (if (zerop (length id))
-          nil
-          (first (cl-ppcre:split "\\s+" id))))))
+    (declare (ignore stderr status))
+    (let ((trimmed (trim-all output)))
+      (unless (zerop (length trimmed))
+        (cl-ppcre:split "\\s+" trimmed)))))
 
 (defun desktop-geometry ()
   "Returns the desktop geometry as a string (W H). Assumes all
@@ -50,21 +52,35 @@ workspaces are the same geometry."
     (mapcar 'parse-integer (cl-ppcre:split "\\s+" (trim-all geom)))))
 
 (defun window-geometry (name)
-  "Returns the current geometry of the given window by name."
-  (multiple-value-bind (line backref)
+  "Returns the current geometry of the given window by name as a list
+  of (width height), or nil if no such window exists or its geometry
+  can't be determined."
+  (let ((window-id (get-window-id name)))
+    (when window-id
       (multiple-value-bind (results stderr status)
-          (uiop:run-program (format nil "xdotool getwindowgeometry ~A"
-                                    (get-window-id name))
+          (uiop:run-program (format nil "xdotool getwindowgeometry ~A" window-id)
                             :output :string :ignore-error-status t)
-        (cl-ppcre:scan-to-strings "Geometry: ([0-9]*x?[0-9]*)"
-                                  (trim-all results)))
-    (mapcar 'parse-integer
-            (cl-ppcre:split "x" (elt backref 0)))))
+        (declare (ignore stderr status))
+        (multiple-value-bind (line backref)
+            (cl-ppcre:scan-to-strings "Geometry: ([0-9]*x?[0-9]*)"
+                                      (trim-all results))
+          (declare (ignore line))
+          (when (plusp (length backref))
+            (mapcar 'parse-integer (cl-ppcre:split "x" (elt backref 0)))))))))
 
 (defun maximize-client (name)
-  "Maximizes window by name."
+  "Maximizes window by name.
+
+  Sets maximized_vert and maximized_horz as two separate wmctrl calls
+  rather than one combined toggle action: under KWin, a single
+  \"-b toggle,maximized_vert,maximized_horz\" call was observed to only
+  reliably apply one of the two flags, leaving the window maximized in
+  one dimension only."
   (uiop:run-program
-   (format nil "wmctrl -xr ~A -b toggle,maximized_vert,maximized_horz" name)
+   (format nil "wmctrl -xr ~A -b add,maximized_vert" name)
+   :ignore-error-status t)
+  (uiop:run-program
+   (format nil "wmctrl -xr ~A -b add,maximized_horz" name)
    :ignore-error-status t))
 
 (defun minimize (name)
@@ -75,10 +91,12 @@ workspaces are the same geometry."
      :ignore-error-status t)))
 
 (defun maximized-p (name)
-  "Returns true if client is already maximized."
+  "Returns true if client is already maximized. Returns nil (not
+  maximized) if the window can't be found."
   (let ((desktop (desktop-geometry))
         (window (window-geometry name)))
-    (and (< (* (first desktop) 0.87) (first window))
+    (and window
+         (< (* (first desktop) 0.87) (first window))
          (< (* (second desktop) 0.87) (second window)))))
 
 (defun maximize (name)
@@ -89,14 +107,48 @@ workspaces are the same geometry."
 
 (defun start-window (name command)
   "Starts the window with name and command, waits a maximum of 5
-  seconds for window to open for window to open."
-  (uiop:run-program (format nil *start-client* *socket-path* name command)
-                    :ignore-error-status t)
-  (loop for n from 0 below 20
-     until (plusp (length (get-window-id-by-name name))) do
-       (sleep 0.25))
-  (multiple-value-bind (in out rv)
-      (uiop:run-program (format nil "xprop -name ~A -f WM_CLASS 8s -set WM_CLASS \"~A\"" name name)) (when (zerop rv) t)))
+  seconds for a new Emacs window to appear, then tags it with WM_CLASS
+  name so later lookups by name succeed.
+
+  The new window is identified by diffing the set of Emacs window ids
+  before and after launch, rather than by matching its title: Doom's
+  frame-title-format can override the frame's name in the title bar,
+  so title text is not a reliable identifier.
+
+  A nonzero exit status from emacsclient does not necessarily mean no
+  frame was created -- e.g. an error partway through the requested
+  elisp command still leaves the already-created frame on screen -- so
+  window discovery always runs regardless of emacsclient's exit
+  status. The exit status is only consulted for diagnostics, and only
+  once polling has confirmed no new window ever appeared."
+  (let ((known-ids (window-ids-with-class "emacs")))
+    (multiple-value-bind (stdout stderr status)
+        (uiop:run-program (format nil *start-client* *socket-path* name command)
+                          :output :string :error-output :string
+                          :ignore-error-status t)
+      (declare (ignore stdout))
+      (let ((window-id (loop for n from 0 below 20
+                             for new-ids = (set-difference
+                                            (window-ids-with-class "emacs")
+                                            known-ids :test #'string=)
+                             until new-ids do (sleep 0.25)
+                             finally (return (first new-ids)))))
+        (cond
+          (window-id
+           (multiple-value-bind (in out rv)
+               (uiop:run-program
+                (format nil "xprop -id ~A -f WM_CLASS 8s -set WM_CLASS \"~A\"" window-id name)
+                :ignore-error-status t)
+             (declare (ignore in out))
+             (when (zerop rv) t)))
+          ((not (zerop status))
+           (format *error-output* "emacs-term: emacsclient failed for socket ~S:~%~A~%"
+                   *socket-path* stderr)
+           nil)
+          (t
+           (format *error-output*
+                   "emacs-term: no new Emacs window appeared within 5 seconds~%")
+           nil))))))
 
 (defun skip-taskbar (name)
   (uiop:run-program (format nil "wmctrl -xr ~A -b toggle,skip_taskbar" name)
